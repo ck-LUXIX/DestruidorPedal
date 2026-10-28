@@ -94,19 +94,22 @@ const LEVELS = [
 // É uma sobrevivência de duração extrema (vários quilômetros de pista).
 {
   const pts = [];
-  for (let i = 0; i <= 280; i++) {
-    const z = -20 + i * 27;
-    const x = 25 * Math.sin(i * 0.19) + 12 * Math.sin(i * 0.43) + 5 * Math.sin(i * 0.79);
+  // Mais curta que a versão anterior, mas com curvas mais rápidas e alternadas.
+  // O comprimento total fica em torno de 4,5 km, evitando uma fase excessivamente longa.
+  for (let i = 0; i <= 180; i++) {
+    const z = -20 + i * 25;
+    const x = 31 * Math.sin(i * 0.235) + 14 * Math.sin(i * 0.56) + 6 * Math.sin(i * 1.02);
     pts.push([x, z]);
   }
   const obs = [];
-  for (let i = 8; i < 275; i += 3) {
-    const u = i / 280;
-    const side = (Math.floor(i / 3) % 2 === 0) ? -1 : 1;
-    obs.push(['b', u, side * 4.3, 1.35]);
-    obs.push(['b', u, -side * 4.3, 1.35]);
-    if (i % 2 === 0) obs.push(['c', Math.min(.985, u + .008), side * 1.5]);
-    if (i % 4 === 0) obs.push(['k', Math.min(.985, u + .012), -side * 2.2]);
+  for (let i = 7; i < 177; i += 2) {
+    const u = i / 180;
+    const side = (Math.floor(i / 2) % 2 === 0) ? -1 : 1;
+    // Barreiras alternadas estreitam a passagem, mas deixam uma rota possível.
+    obs.push(['b', u, side * 4.05, 1.25]);
+    obs.push(['b', u, -side * 4.05, 1.25]);
+    if (i % 3 === 0) obs.push(['c', Math.min(.985, u + .006), side * 1.25]);
+    if (i % 4 === 1) obs.push(['k', Math.min(.985, u + .01), -side * 2.0]);
   }
   LEVELS.push({name: 'Infinita — Curvas Insanas', w: 16, ramps: [], pts, obs, endless: true});
 }
@@ -119,11 +122,12 @@ const ls = {get: k => { try { return localStorage.getItem(k); } catch (e) { retu
 const fmt = t => { const m = Math.floor(t / 60), s = t - m * 60; return String(m).padStart(2, '0') + ':' + s.toFixed(1).padStart(4, '0'); };
 const wrapA = a => { while (a > Math.PI) a -= TAU; while (a < -Math.PI) a += TAU; return a; };
 const mkTex = (draw, w = 128, h = 128) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy()); return t; };
 
 /* ================= CENA ================= */
 const renderer = new THREE.WebGLRenderer({canvas: $('c'), antialias: true});
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Limita a resolução interna para aliviar GPU sem alterar a resolução da janela.
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
@@ -132,13 +136,13 @@ scene.fog = new THREE.Fog(0x8ec5ff, 80, 380);
 const camera = new THREE.PerspectiveCamera(62, 1, .1, 1500);
 scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x445533, 1.1));
 const sun = new THREE.DirectionalLight(0xfff2d0, 2.2);
-sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
 Object.assign(sun.shadow.camera, {left: -40, right: 40, top: 40, bottom: -40, near: 1, far: 200});
 sun.shadow.bias = -.0004;
 scene.add(sun, sun.target);
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), new THREE.MeshStandardMaterial({color: 0x3b6b45, roughness: 1}));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(12000, 12000), new THREE.MeshStandardMaterial({color: 0x3b6b45, roughness: 1}));
 ground.rotation.x = -Math.PI / 2; ground.position.y = -.05; ground.receiveShadow = true; scene.add(ground);
-function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+function resize() { renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5)); renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
 addEventListener('resize', resize); resize();
 
 /* ================= CARRO ================= */
@@ -382,7 +386,9 @@ function buildLevel(n) {
   const checker = mkTex((c, w, h) => { for (let x = 0; x < 8; x++) for (let y = 0; y < 2; y++) { c.fillStyle = (x + y) % 2 ? '#111' : '#fff'; c.fillRect(x * w / 8, y * h / 2, w / 8, h / 2); } });
   const gate = (i, color, tex) => {
     const p = P[i], g = new THREE.Group(), pm = new THREE.MeshStandardMaterial({color, emissive: color, emissiveIntensity: .5});
-    for (const sd of [1, -1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(.5, 6, .5), pm); post.position.set(p.lx * (W / 2 + .9) * sd, 3, p.lz * (W / 2 + .9) * sd); g.add(post); }
+    // Os postes ficam no eixo local X e o grupo inteiro gira uma única vez
+    // para ficar perpendicular à direção da pista, inclusive nas curvas.
+    for (const sd of [1, -1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(.5, 6, .5), pm); post.position.set((W / 2 + .9) * sd, 3, 0); g.add(post); }
     const beam = new THREE.Mesh(new THREE.BoxGeometry(W + 2.4, 1, .5), tex ? new THREE.MeshStandardMaterial({map: tex}) : pm);
     beam.position.y = 6; g.add(beam); g.position.set(p.x, p.h, p.z); g.rotation.y = Math.atan2(p.tx, p.tz); world.add(g);
   };
@@ -439,36 +445,68 @@ function buildLevel(n) {
   // CENÁRIO EXTREMO: vegetação, rochas, postes, placas, estruturas e detalhes de pista.
   // Todos os objetos são criados em relação à curva, mantendo-se fora da área dirigível.
   const scenery = new THREE.Group(); world.add(scenery);
-  const treeTrunkGeo = new THREE.CylinderGeometry(.22, .38, 3.2, 7);
-  const treeLeafGeo = new THREE.ConeGeometry(1.65, 4.8, 8);
-  const pineGeo = new THREE.ConeGeometry(1.35, 4.2, 7);
-  const trunkMat = new THREE.MeshStandardMaterial({color: 0x60402b, roughness: 1});
-  const leafMats = [0x183f2a, 0x245a34, 0x2e6b3d, 0x416b36].map(color => new THREE.MeshStandardMaterial({color, roughness: 1}));
-  const rockMats = [0x5a5d60, 0x77746d, 0x464b50].map(color => new THREE.MeshStandardMaterial({color, roughness: 1}));
-  const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+  // Árvores importadas do arquivo GLB enviado pelo usuário.
+  // Mantém a mesma distribuição e as mesmas distâncias seguras da pista.
   const treeCount = Math.max(180, Math.round(N * .8));
-  const trunks = new THREE.InstancedMesh(treeTrunkGeo, trunkMat, treeCount);
-  const crowns = new THREE.InstancedMesh(treeLeafGeo, leafMats[0], treeCount);
-  const pines = new THREE.InstancedMesh(pineGeo, leafMats[1], Math.floor(treeCount * .55));
-  const rocks = new THREE.InstancedMesh(rockGeo, rockMats[0], Math.max(100, Math.round(N * .6)));
-  const rock2 = new THREE.InstancedMesh(rockGeo, rockMats[1], Math.max(70, Math.round(N * .4)));
-  const obj = new THREE.Object3D(); let treeN = 0, pineN = 0, rockN = 0, rock2N = 0;
-  for (let tries = 0; tries < treeCount * 12 && treeN < treeCount; tries++) {
+  const rocks = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0),
+    new THREE.MeshStandardMaterial({color: 0x5a5d60, roughness: 1}), Math.max(100, Math.round(N * .6)));
+  const rock2 = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1, 0),
+    new THREE.MeshStandardMaterial({color: 0x77746d, roughness: 1}), Math.max(70, Math.round(N * .4)));
+  const obj = new THREE.Object3D(); let rockN = 0, rock2N = 0;
+  const treeSpots = [];
+  for (let tries = 0; tries < treeCount * 12 && treeSpots.length < treeCount; tries++) {
     const idx = 3 + Math.floor(Math.random() * (N - 6)), q = P[idx];
     const side = Math.random() < .5 ? -1 : 1;
     const lateral = W / 2 + 9 + Math.random() * 32;
     const x = q.x + q.lx * side * lateral, z = q.z + q.lz * side * lateral;
     // Mantém o cenário longe da pista inteira, inclusive nas curvas.
-    if (P.some((p, i) => i % 3 === 0 && (p.x - x) ** 2 + (p.z - z) ** 2 < (W / 2 + 5) ** 2)) continue;
-    const h = 2.8 + Math.random() * 2.2, sc = .75 + Math.random() * 1.1;
-    obj.position.set(x, h / 2, z); obj.rotation.set(0, Math.random() * TAU, 0); obj.scale.set(sc, h / 3.2, sc); obj.updateMatrix(); trunks.setMatrixAt(treeN, obj.matrix);
-    obj.position.set(x, h + 1.0 * sc, z); obj.scale.set(sc, sc, sc); obj.updateMatrix(); crowns.setMatrixAt(treeN, obj.matrix); crowns.setColorAt(treeN, new THREE.Color([0x183f2a, 0x245a34, 0x2e6b3d, 0x416b36][Math.floor(Math.random() * 4)]));
-    if (Math.random() < .62 && pineN < pines.count) { obj.position.set(x + (Math.random() - .5) * 2, h + 2.2, z + (Math.random() - .5) * 2); obj.rotation.y = Math.random() * TAU; obj.scale.set(sc, sc, sc); obj.updateMatrix(); pines.setMatrixAt(pineN++, obj.matrix); }
-    treeN++;
+    if (P.some((pt, i) => i % 3 === 0 && (pt.x - x) ** 2 + (pt.z - z) ** 2 < (W / 2 + 5) ** 2)) continue;
+    treeSpots.push({x, z, scale: 3.8 + Math.random() * 3.2, rotation: Math.random() * TAU});
   }
-  trunks.count = treeN; trunks.castShadow = true; trunks.receiveShadow = true; scenery.add(trunks);
-  crowns.count = treeN; crowns.castShadow = true; crowns.receiveShadow = true; scenery.add(crowns);
-  pines.count = pineN; pines.castShadow = true; scenery.add(pines);
+
+  new GLTFLoader().load('assets/teste_arvore_2.glb', (gltf) => {
+    // Otimização principal: em vez de clonar toda a árvore centenas de vezes,
+    // agrupa cada parte do modelo em InstancedMesh. A posição e a escala visual
+    // das árvores permanecem iguais, mas há muito menos chamadas de desenho.
+    const treeTemplate = gltf.scene;
+    treeTemplate.updateMatrixWorld(true);
+    const bounds = new THREE.Box3().setFromObject(treeTemplate);
+    const size = new THREE.Vector3(); bounds.getSize(size);
+    const height = Math.max(size.y, 0.001);
+    const baseY = bounds.min.y;
+    const sourceMeshes = [];
+    treeTemplate.traverse((part) => {
+      if (part.isMesh && part.geometry && part.material) sourceMeshes.push(part);
+    });
+    const rootMatrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const finalMatrix = new THREE.Matrix4();
+    for (const source of sourceMeshes) {
+      const instances = new THREE.InstancedMesh(source.geometry, source.material, treeSpots.length);
+      instances.name = 'ArvoresInstanciadas';
+      // Sombras de centenas de árvores são caras; a iluminação do ambiente
+      // continua ativa e as árvores mantêm materiais e silhueta originais.
+      instances.castShadow = false;
+      instances.receiveShadow = false;
+      for (let i = 0; i < treeSpots.length; i++) {
+        const spot = treeSpots[i];
+        position.set(spot.x, -baseY * spot.scale / height, spot.z);
+        quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), spot.rotation);
+        scale.setScalar(spot.scale / height);
+        rootMatrix.compose(position, quaternion, scale);
+        finalMatrix.multiplyMatrices(rootMatrix, source.matrixWorld);
+        instances.setMatrixAt(i, finalMatrix);
+      }
+      instances.instanceMatrix.needsUpdate = true;
+      instances.computeBoundingSphere();
+      scenery.add(instances);
+    }
+  }, undefined, (error) => {
+    console.error('Não foi possível carregar assets/teste_arvore_2.glb:', error);
+  });
+
   for (let tries = 0; tries < rocks.count * 8 && (rockN < rocks.count || rock2N < rock2.count); tries++) {
     const idx = 3 + Math.floor(Math.random() * (N - 6)), q = P[idx], side = Math.random() < .5 ? -1 : 1;
     const lateral = W / 2 + 3 + Math.random() * 22, x = q.x + q.lx * side * lateral, z = q.z + q.lz * side * lateral;
@@ -476,7 +514,7 @@ function buildLevel(n) {
     const sc = .5 + Math.random() * 2.1; obj.position.set(x, sc * .38, z); obj.rotation.set(Math.random(), Math.random() * TAU, Math.random()); obj.scale.set(sc * (0.8 + Math.random()), sc * .7, sc * (0.7 + Math.random())); obj.updateMatrix();
     if (Math.random() < .58 && rockN < rocks.count) rocks.setMatrixAt(rockN++, obj.matrix); else if (rock2N < rock2.count) rock2.setMatrixAt(rock2N++, obj.matrix);
   }
-  rocks.count = rockN; rock2.count = rock2N; rocks.castShadow = rock2.castShadow = true; scenery.add(rocks, rock2);
+  rocks.count = rockN; rock2.count = rock2N; rocks.castShadow = rock2.castShadow = false; rocks.receiveShadow = rock2.receiveShadow = false; scenery.add(rocks, rock2);
 
   // Postes de iluminação com lâmpadas emissivas, colocados em intervalos regulares.
   const lampPoleMat = new THREE.MeshStandardMaterial({color: 0x333b43, metalness: .65, roughness: .4});
