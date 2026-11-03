@@ -91,3 +91,5 @@ As otimizações buscam melhorar o desempenho sem alterar a proposta principal, 
 **Projeto: DestruidorPedal**
 
 ### Uma corrida diferente, um desafio de cada vez. Você consegue chegar ao final dirigindo de ré?
+##  link do jogo
+**👉https://ck-luxix.github.io/DestruidorPedal/** 
