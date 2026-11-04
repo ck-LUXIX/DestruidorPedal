@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jogo de Carro de Ré</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <!-- Ecra de Carregamento -->
+  <div id="loading">
+    <h1>Carregando...</h1>
+    <p class="sub">A preparar os motores e a pista</p>
+  </div>
+
+  <!-- HUD do Jogo -->
+  <div id="hud" hidden>
+    <div class="tl">
+      <b id="hLv">Fase 1</b>
+      <span id="hCp">Checkpoints: 0/3</span>
+    </div>
+    <div class="tr">
+      <div id="hT">00:00.0</div>
+      <small id="hTot">Total: 00:00.0</small>
+    </div>
+    <div id="hint">⬇ DIRIJA DE RÉ — segure S</div>
+    <div id="alert">COLISÃO!</div>
+    <div id="count" hidden>
+      <span id="cn">5</span>
+      <small>SEGUNDOS PARA EXPLODIR!</small>
+    </div>
+    <div class="bl">
+      <b id="hSp">0</b> <span>KM/H</span>
+    </div>
+    <div class="bar">
+      <i id="hPr"></i>
+      <span id="hPct">0%</span>
+    </div>
+    <div class="help">S: Ré | W: Travão/Frente | A/D: Direção | C: Câmara | R: Reiniciar | Esc: Pausa</div>
+  </div>
+
+  <!-- Menus e Sobreposições -->
+  <div id="menu" class="ov" hidden>
+    <h1>REVERSE <span>RACE</span></h1>
+    <p class="sub">Consegue chegar ao fim a conduzir de ré sem explodir?</p>
+    <div class="best" id="best"></div>
+    <button class="primary" data-a="play">Jogar</button>
+    <button data-a="levels">Fases</button>
+    <button data-a="controls">Controles</button>
+    <button data-a="options">Opções</button>
+  </div>
+
+  <div id="levels" class="ov" hidden>
+    <h2>Selecionar Fase</h2>
+    <div id="lvBtns"></div>
+    <button data-a="back">Voltar</button>
+  </div>
+
+  <div id="controls" class="ov" hidden>
+    <h2>Controles</h2>
+    <table>
+      <tr><td><kbd>S</kbd> / <kbd>↓</kbd></td><td>Acelerar de Ré</td></tr>
+      <tr><td><kbd>W</kbd> / <kbd>↑</kbd></td><td>Travar / Ir para frente</td></tr>
+      <tr><td><kbd>A</kbd> / <kbd>D</kbd></td><td>Direção</td></tr>
+      <tr><td><kbd>Espaço</kbd></td><td>Travão de Mão</td></tr>
+      <tr><td><kbd>C</kbd></td><td>Mudar Câmara</td></tr>
+      <tr><td><kbd>R</kbd></td><td>Reiniciar Fase</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Pausa</td></tr>
+    </table>
+    <button data-a="back">Voltar</button>
+  </div>
+
+  <div id="options" class="ov" hidden>
+    <h2>Opções</h2>
+    <label>Volume: <input type="range" id="vol" min="0" max="1" step="0.05"></label>
+    <label><input type="checkbox" id="mute"> Sem som</label>
+    <button data-a="back">Voltar</button>
+  </div>
+
+  <div id="pause" class="ov" hidden>
+    <h2>Jogo Pausado</h2>
+    <button class="primary" data-a="resume">Continuar</button>
+    <button data-a="restart">Reiniciar Fase</button>
+    <button data-a="menu">Menu Principal</button>
+  </div>
+
+  <div id="end" class="ov" hidden>
+    <h1 id="endT">FIM DE JOGO</h1>
+    <p class="sub" id="endM"></p>
+    <p class="sub" id="endS"></p>
+    <button class="primary" id="bRetry" data-a="retry">Tentar Novamente</button>
+    <button id="bNext" data-a="next">Próxima Fase</button>
+    <button data-a="menu">Menu Principal</button>
+  </div>
+
+  <!-- Import do jogo principal -->
+  <script type="module" src="game.js"></script>
+</body>
+</html>
